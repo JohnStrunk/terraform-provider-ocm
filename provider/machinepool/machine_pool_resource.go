@@ -471,6 +471,97 @@ func (r *MachinePoolResource) magicImport(ctx context.Context, state *MachinePoo
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// The description of the machine pool provided by the user must be
+	// "compatible" with the machine pool that was created at cluster creation
+	// time. In this case, "compatible" means that the config provided by the
+	// user must have identical values for attributes that cannot be changed
+	// after creation.
+	//
+	// Below should be checks for all attributes that are marked w/
+	// RequiresReplace or Immutable
+	const (
+		summaryString   = "Cannot import the default worker machine pool"
+		detailStringFmt = "Attribute '%s' cannot be changed after creation. " +
+			"Please use the same value ('%v') that was used to create the cluster."
+	)
+	if !state.MachineType.IsNull() && !state.MachineType.IsUnknown() && !state.MachineType.Equal(existingState.MachineType) {
+		resp.Diagnostics.AddAttributeError(path.Root("machine_type"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"machine_type",
+				existingState.MachineType.ValueString(),
+			),
+		)
+	}
+	if !state.UseSpotInstances.IsNull() && !state.UseSpotInstances.IsUnknown() && !state.UseSpotInstances.Equal(existingState.UseSpotInstances) {
+		resp.Diagnostics.AddAttributeError(path.Root("use_spot_instances"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"use_spot_instances",
+				existingState.UseSpotInstances.ValueBool(),
+			),
+		)
+	}
+	if !state.MaxSpotPrice.IsNull() && !state.MaxSpotPrice.IsUnknown() && !state.MaxSpotPrice.Equal(existingState.MaxSpotPrice) {
+		resp.Diagnostics.AddAttributeError(path.Root("max_spot_price"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"max_spot_price",
+				existingState.MaxSpotPrice.ValueFloat64(),
+			),
+		)
+	}
+	if !state.MultiAvailabilityZone.IsNull() && !state.MultiAvailabilityZone.IsUnknown() && !state.MultiAvailabilityZone.Equal(existingState.MultiAvailabilityZone) {
+		resp.Diagnostics.AddAttributeError(path.Root("multi_availability_zone"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"multi_availability_zone",
+				existingState.MultiAvailabilityZone.ValueBool(),
+			),
+		)
+	}
+	if !state.AvailabilityZone.IsNull() && !state.AvailabilityZone.IsUnknown() && !state.AvailabilityZone.Equal(existingState.AvailabilityZone) {
+		resp.Diagnostics.AddAttributeError(path.Root("availability_zone"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"availability_zone",
+				existingState.AvailabilityZone.ValueString(),
+			),
+		)
+	}
+	// What do we do about fields like this that produce error messages advocating values of ''? Or are they null?
+	if !state.SubnetID.IsNull() && !state.SubnetID.IsUnknown() && !state.SubnetID.Equal(existingState.SubnetID) {
+		resp.Diagnostics.AddAttributeError(path.Root("subnet_id"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"subnet_id",
+				existingState.SubnetID.ValueString(),
+			),
+		)
+	}
+	if !state.DiskSize.IsNull() && !state.DiskSize.IsUnknown() && !state.DiskSize.Equal(existingState.DiskSize) {
+		resp.Diagnostics.AddAttributeError(path.Root("disk_size"),
+			summaryString,
+			fmt.Sprintf(detailStringFmt,
+				"disk_size",
+				existingState.DiskSize.ValueInt64(),
+			),
+		)
+	}
+	// if !state.AdditionalSecurityGroupIds.IsNull() && !state.AdditionalSecurityGroupIds.Equal(existingState.AdditionalSecurityGroupIds) {
+	// 	resp.Diagnostics.AddAttributeError(path.Root("aws_additional_security_group_ids"),
+	// 		summaryString,
+	// 		fmt.Sprintf(detailStringFmt,
+	// 			"aws_additional_security_group_ids",
+	// 			existingState.AdditionalSecurityGroupIds.,
+	// 		),
+	// 	)
+	// }
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	diags = r.doUpdate(ctx, existingState, state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
